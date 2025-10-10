@@ -6,7 +6,6 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize, sent_tokenize
 from collections import Counter
-import re
 import hashlib
 from functools import wraps
 
@@ -17,6 +16,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Download NLTK data
 try:
     nltk.download('punkt', quiet=True)
     nltk.download('stopwords', quiet=True)
@@ -24,10 +24,16 @@ try:
 except:
     stop_words = set()
 
+# Database initialization
+DB_FILE = 'papers.db'
+
 def init_db():
-    with sqlite3.connect('papers.db') as conn:
-        with open('schema.sql', 'r') as f:
-            conn.executescript(f.read())
+    if not os.path.exists(DB_FILE):
+        with sqlite3.connect(DB_FILE) as conn:
+            with open('schema.sql', 'r') as f:
+                conn.executescript(f.read())
+
+init_db()  # Ensure DB is initialized when app starts
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -110,7 +116,7 @@ def register():
         hashed_password = hash_password(password)
         
         try:
-            with sqlite3.connect('papers.db') as conn:
+            with sqlite3.connect(DB_FILE) as conn:
                 conn.execute(
                     'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
                     (username, email, hashed_password)
@@ -131,7 +137,7 @@ def login():
         password = request.form['password']
         hashed_password = hash_password(password)
         
-        with sqlite3.connect('papers.db') as conn:
+        with sqlite3.connect(DB_FILE) as conn:
             user = conn.execute(
                 'SELECT id, username FROM users WHERE username = ? AND password = ?',
                 (username, hashed_password)
@@ -156,7 +162,7 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    with sqlite3.connect('papers.db') as conn:
+    with sqlite3.connect(DB_FILE) as conn:
         papers = conn.execute(
             'SELECT * FROM papers WHERE user_id = ? ORDER BY id DESC LIMIT 5',
             (session['user_id'],)
@@ -194,7 +200,7 @@ def upload_file():
             keywords = extract_keywords(text)
             summary = extract_summary(text)
             
-            with sqlite3.connect('papers.db') as conn:
+            with sqlite3.connect(DB_FILE) as conn:
                 conn.execute(
                     'INSERT INTO papers (title, author, keywords, summary, filepath, user_id) VALUES (?, ?, ?, ?, ?, ?)',
                     (title, author, keywords, summary, filepath, session['user_id'])
@@ -215,7 +221,7 @@ def upload_file():
 @app.route('/papers')
 @login_required
 def papers():
-    with sqlite3.connect('papers.db') as conn:
+    with sqlite3.connect(DB_FILE) as conn:
         user_papers = conn.execute(
             'SELECT * FROM papers WHERE user_id = ? ORDER BY id DESC',
             (session['user_id'],)
@@ -229,7 +235,7 @@ def search():
     papers = []
     
     if query:
-        with sqlite3.connect('papers.db') as conn:
+        with sqlite3.connect(DB_FILE) as conn:
             papers = conn.execute(
                 'SELECT * FROM papers WHERE user_id = ? AND (title LIKE ? OR author LIKE ? OR keywords LIKE ?) ORDER BY id DESC',
                 (session['user_id'], f'%{query}%', f'%{query}%', f'%{query}%')
@@ -240,7 +246,7 @@ def search():
 @app.route('/api/papers')
 @login_required
 def api_papers():
-    with sqlite3.connect('papers.db') as conn:
+    with sqlite3.connect(DB_FILE) as conn:
         papers = conn.execute(
             'SELECT * FROM papers WHERE user_id = ? ORDER BY id DESC',
             (session['user_id'],)
@@ -251,5 +257,4 @@ def api_papers():
         } for p in papers])
 
 if __name__ == '__main__':
-    init_db()
     app.run(host='0.0.0.0', port=8080, debug=True)

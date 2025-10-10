@@ -9,15 +9,17 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install Python dependencies
+RUN pip install --upgrade pip
+
+# Copy requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install spaCy model via pip and download NLTK corpora
+# Install spaCy model and NLTK data
 RUN pip install --no-cache-dir en_core_web_sm && \
     python -m nltk.downloader punkt stopwords
 
-# Copy application code
+# Copy application code and schema
 COPY . .
 
 # Create uploads folder

@@ -1,22 +1,19 @@
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS papers;
-
-CREATE TABLE users (
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    password TEXT NOT NULL
 );
 
-CREATE TABLE papers (
+-- Papers table
+CREATE TABLE IF NOT EXISTS papers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
+    title TEXT,
     author TEXT,
     keywords TEXT,
     summary TEXT,
-    filepath TEXT NOT NULL,
-    user_id INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
+    filepath TEXT,
+    user_id INTEGER,
+    FOREIGN KEY(user_id) REFERENCES users(id)
 );
